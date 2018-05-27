@@ -1,6 +1,6 @@
 from keras import backend as K
 from keras.models import Model
-from keras.layers import (BatchNormalization, Conv1D, Dense, Input, Dropout, 
+from keras.layers import (BatchNormalization, Conv1D, Dense, Input, Dropout, MaxPooling1D,
     TimeDistributed, Activation, Bidirectional, SimpleRNN, GRU, LSTM)
 
 def simple_rnn_model(input_dim, output_dim=29):
@@ -168,21 +168,23 @@ def final_model(input_dim, filters, kernel_size, conv_stride,
     """
     # Main acoustic input
     input_data = Input(name='the_input', shape=(None, input_dim))
+    drop_out = Dropout(0.2)(input_data)
     # Add convolutional layer
     conv_1d = Conv1D(filters, kernel_size, 
                      strides=conv_stride, 
                      padding=conv_border_mode,
                      activation='relu',
-                     name='conv1d')(input_data)
+                     name='conv1d')(drop_out)
+    # Add MaxPool
+    mp=MaxPooling1D(pool_size=1, strides=1, padding='valid')(conv_1d)
     # Add batch normalization
-    bn_cnn = BatchNormalization(name='bn_conv_1d')(conv_1d)
-
+    bn_cnn = BatchNormalization(name='bn_conv_1d')(mp)
     for i in range(0, recur_layers):
         bidir_rnn = Bidirectional(GRU(units,return_sequences=True,implementation=2))(bn_cnn)
-        bn = BatchNormalization()(bidir_rnn)
+        drop_out = Dropout(0.2)(bidir_rnn)
+        bn = BatchNormalization()(drop_out)
         bn_cnn = bn
-    drop_out = Dropout(0.4)(bn_cnn)
-    time_dense=TimeDistributed(Dense(output_dim))(drop_out)
+    time_dense=TimeDistributed(Dense(output_dim))(bn_cnn)
     # TODO: Add softmax activation layer
     y_pred = Activation('softmax',name='softmax')(time_dense)
     # Specify the model
