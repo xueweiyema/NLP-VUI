@@ -146,11 +146,13 @@ def cnn_bidirectional_rnn_model(input_dim, filters, kernel_size, conv_stride,
                      activation='relu',
                      name='conv1d')(input_data)
     # Add batch normalization
-    bn_cnn = BatchNormalization(name='bn_conv_1d')(conv_1d)
+    drop_out = Dropout(0.2)(conv_1d)
+    bn_cnn = BatchNormalization(name='bn_conv_1d')(drop_out)
     # Add bidirectional recurrent layer
     bidir_rnn = Bidirectional(GRU(units,return_sequences=True,implementation=2))(bn_cnn)
+    drop_out = Dropout(0.2)(bidir_rnn)
     # Add batch normalization
-    bn_rnn = BatchNormalization(name='bn_rnn')(bidir_rnn)
+    bn_rnn = BatchNormalization(name='bn_rnn')(drop_out)
     # Add a TimeDistributed(Dense(output_dim)) layer
     time_dense = TimeDistributed(Dense(output_dim))(bn_rnn)
     # Add softmax activation layer
@@ -176,7 +178,7 @@ def final_model(input_dim, filters, kernel_size, conv_stride,
                      activation='relu',
                      name='conv1d')(drop_out)
     # Add MaxPool
-    mp=MaxPooling1D(pool_size=1, strides=1, padding='valid')(conv_1d)
+    mp=MaxPooling1D(pool_size=2, strides=2, padding='valid')(conv_1d)
     # Add batch normalization
     bn_cnn = BatchNormalization(name='bn_conv_1d')(mp)
     for i in range(0, recur_layers):
@@ -191,6 +193,7 @@ def final_model(input_dim, filters, kernel_size, conv_stride,
     model = Model(inputs=input_data, outputs=y_pred)
     # TODO: Specify model.output_length
     model.output_length = lambda x: cnn_output_length(
-        x, kernel_size, conv_border_mode, conv_stride)
+        x, kernel_size, conv_border_mode, conv_stride)/2
+
     print(model.summary())
     return model
